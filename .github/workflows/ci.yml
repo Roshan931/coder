@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Neovim ${{ matrix.neovim }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim:
+          - v0.11.0
+          - stable
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          version: ${{ matrix.neovim }}
+          neovim: true
+      - name: Smoke tests
+        run: nvim --headless -u tests/minimal_init.lua -i NONE -c "luafile tests/smoke.lua"
+      - name: Setup lifecycle tests
+        run: nvim --headless -u NONE -i NONE -c "set runtimepath^=." -c "luafile tests/setup_lifecycle.lua"
+      - name: OpenCode process tests
+        run: nvim --headless -u NONE -i NONE -c "luafile tests/process.lua"
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          version: latest
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --check lua plugin tests

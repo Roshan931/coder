@@ -1,0 +1,174 @@
+*coder.txt*  Async OpenCode tasks inside Neovim
+
+==============================================================================
+Coder                                                            *coder*
+
+Coder captures a focused code scope or directory blueprint, runs OpenCode in
+the background, and returns a unified diff for review.
+
+Normal mode captures the nearest meaningful parent scope. Visual and command
+ranges capture the exact selection. Directory mode captures the current path,
+the netrw cursor path, or selected netrw entries as a capped multi-file
+snapshot.
+
+Edit tasks use OpenCode's edit-restricted plan agent by default and ask for a
+raw unified diff. Summary tasks return a terse answer. Clean patches wait for
+review unless edits.mode is "auto_apply".
+
+Fast and deep profiles control the amount of supplied repository context.
+Fast uses OpenCode's minimal variant. Deep sends larger architecture and
+directory snapshots.
+
+==============================================================================
+Requirements                                            *coder-requirements*
+
+- Neovim 0.11 or newer.
+- OpenCode on $PATH with run, --agent, --dir, --format, --title, and
+  --variant support.
+- Git is recommended for the patch fallback.
+- Treesitter and LSP are optional but improve scope and diagnostic capture.
+
+Run:
+>
+  :checkhealth coder
+<
+
+==============================================================================
+Setup                                                          *coder-setup*
+
+Coder initializes its commands automatically. Global mappings are disabled by
+default. Enable the preset or customize individual mappings:
+>
+  require("coder").setup({
+    opencode = {
+      command = "opencode",
+      timeout_ms = 120000,
+      agent = "plan",
+      attach = nil,
+      pure = false,
+    },
+    max_concurrent_jobs = 8,
+    edits = { mode = "review_patch" },
+    answers = { auto_open = true },
+    keymaps = { enable = true },
+  })
+<
+
+setup() may be called again. It preserves queued tasks, replaces only
+Coder-owned mappings, and never overwrites an existing user mapping.
+
+For a persistent server:
+>
+  opencode serve --port 4096
+<
+>
+  require("coder").setup({
+    opencode = {
+      attach = "http://127.0.0.1:4096",
+    },
+  })
+<
+
+==============================================================================
+Commands                                                    *coder-commands*
+
+  :CoderEnqueue [intent]        Enqueue current scope or command range.
+  :CoderEnqueueDeep [intent]    Enqueue with deep context.
+  :CoderEnqueueDirectory [path] [-- intent]
+                                Enqueue a directory blueprint.
+  :CoderEnqueueDirectoryDeep [path] [-- intent]
+                                Enqueue a deep directory blueprint.
+  :CoderReview                  Review the latest completed task.
+  :CoderStatus                  Open or refresh task status.
+  :CoderCancel                  Cancel the latest queued or running task.
+  :CoderFixDiagnostics          Enqueue current-buffer diagnostics.
+  :CoderExplain                 Summarize current scope or command range.
+  :CoderSummarize               Alias for :CoderExplain.
+  :CoderSummarizeDirectory [path] [-- intent]
+                                Summarize directory architecture.
+  :CoderSummarizeDirectoryDeep [path] [-- intent]
+                                Summarize with deep context.
+
+==============================================================================
+Mapping preset                                              *coder-mappings*
+
+Set keymaps.enable to true to install:
+
+  <leader>aa                    Enqueue scope or selection fast.
+  <leader>aA                    Enqueue scope or selection deep.
+  <leader>ai                    Prompt for intent, then enqueue fast.
+  <leader>aI                    Prompt for intent, then enqueue deep.
+  <leader>ap                    Enqueue directory/netrw selection fast.
+  <leader>aP                    Enqueue directory/netrw selection deep.
+  <leader>aQ                    Summarize directory/netrw selection.
+  <leader>ar                    Review result.
+  <leader>as                    Open status.
+  <leader>ad                    Fix diagnostics.
+  <leader>aq                    Summarize scope or selection.
+  <leader>ac                    Cancel task.
+
+Each mapping option accepts a string or false. Existing user mappings are
+preserved.
+
+==============================================================================
+Directory blueprints                                      *coder-directory*
+
+In netrw, place the cursor on a directory or visually select entries, then use
+<leader>ap or <leader>aP when the mapping preset is enabled.
+>
+  :CoderEnqueueDirectoryDeep src/users -- implement stubs and wire references
+<
+
+Coder snapshots capped file contents, including empty files, and asks OpenCode
+for one multi-file unified diff.
+
+==============================================================================
+Review and conflicts                                        *coder-review*
+
+Press "a" in a review window to accept and "r" to reject.
+
+If a hunk no longer matches the target, Coder opens a resolver:
+
+  1                           Keep the current code.
+  2                           Apply OpenCode's proposed conflict section.
+
+The prompt buffer is optional. Text entered there queues a focused AI merge
+task after choosing a side.
+
+Diff paths are normalized and resolved through existing symlinks. Paths that
+resolve outside the workspace root are rejected.
+
+==============================================================================
+Data and permissions                                          *coder-data*
+
+Coder sends selected code, a capped full-file snapshot, diagnostics, imports,
+repository outlines, manifest snippets, related-file outlines, recent task
+metadata, and selected directory snapshots to OpenCode and its configured
+model provider.
+
+OpenCode runs at the workspace root. Coder passes --agent plan and never
+passes --auto by default, but user OpenCode configuration can override agent
+permissions.
+
+Task metadata, raw output, and diffs are stored under:
+>
+  stdpath("state") .. "/coder"
+<
+
+Treat model output as untrusted and review patches before accepting them.
+
+==============================================================================
+Statusline                                                  *coder-statusline*
+
+>
+  require("coder").statusline()
+<
+
+Returns an empty string when no work is active or ready.
+
+==============================================================================
+License                                                        *coder-license*
+
+Coder is released under the MIT License.
+
+ vim:tw=78:ts=8:ft=help:norl:

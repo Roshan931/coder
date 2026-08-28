@@ -1,0 +1,14 @@
+#!/bin/sh
+
+case "$*" in
+  *coder-timeout*)
+    while :; do :; done
+    ;;
+  *coder-fail*)
+    echo "fake OpenCode failure" >&2
+    exit 7
+    ;;
+  *)
+    printf '%s\n' 'diff --git a/example.lua b/example.lua' '--- a/example.lua' '+++ b/example.lua' '@@ -1,1 +1,1 @@' '-return false' '+return true'
+    ;;
+esac
